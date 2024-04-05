@@ -1,0 +1,9 @@
+/home/root-user/Desktop/programs/Rust/bannered/target/debug/deps/libserde_path_to_error-2b9234e68c76d18b.rmeta: /home/root-user/.cargo/registry/src/index.crates.io-6f17d22bba15001f/serde_path_to_error-0.1.16/src/lib.rs /home/root-user/.cargo/registry/src/index.crates.io-6f17d22bba15001f/serde_path_to_error-0.1.16/src/de.rs /home/root-user/.cargo/registry/src/index.crates.io-6f17d22bba15001f/serde_path_to_error-0.1.16/src/path.rs /home/root-user/.cargo/registry/src/index.crates.io-6f17d22bba15001f/serde_path_to_error-0.1.16/src/ser.rs /home/root-user/.cargo/registry/src/index.crates.io-6f17d22bba15001f/serde_path_to_error-0.1.16/src/wrap.rs
+
+/home/root-user/Desktop/programs/Rust/bannered/target/debug/deps/serde_path_to_error-2b9234e68c76d18b.d: /home/root-user/.cargo/registry/src/index.crates.io-6f17d22bba15001f/serde_path_to_error-0.1.16/src/lib.rs /home/root-user/.cargo/registry/src/index.crates.io-6f17d22bba15001f/serde_path_to_error-0.1.16/src/de.rs /home/root-user/.cargo/registry/src/index.crates.io-6f17d22bba15001f/serde_path_to_error-0.1.16/src/path.rs /home/root-user/.cargo/registry/src/index.crates.io-6f17d22bba15001f/serde_path_to_error-0.1.16/src/ser.rs /home/root-user/.cargo/registry/src/index.crates.io-6f17d22bba15001f/serde_path_to_error-0.1.16/src/wrap.rs
+
+/home/root-user/.cargo/registry/src/index.crates.io-6f17d22bba15001f/serde_path_to_error-0.1.16/src/lib.rs:
+/home/root-user/.cargo/registry/src/index.crates.io-6f17d22bba15001f/serde_path_to_error-0.1.16/src/de.rs:
+/home/root-user/.cargo/registry/src/index.crates.io-6f17d22bba15001f/serde_path_to_error-0.1.16/src/path.rs:
+/home/root-user/.cargo/registry/src/index.crates.io-6f17d22bba15001f/serde_path_to_error-0.1.16/src/ser.rs:
+/home/root-user/.cargo/registry/src/index.crates.io-6f17d22bba15001f/serde_path_to_error-0.1.16/src/wrap.rs:

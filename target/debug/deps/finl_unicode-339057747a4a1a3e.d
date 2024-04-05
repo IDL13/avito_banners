@@ -1,0 +1,10 @@
+/home/root-user/Desktop/programs/Rust/bannered/target/debug/deps/libfinl_unicode-339057747a4a1a3e.rmeta: /home/root-user/.cargo/registry/src/index.crates.io-6f17d22bba15001f/finl_unicode-1.2.0/src/lib.rs /home/root-user/.cargo/registry/src/index.crates.io-6f17d22bba15001f/finl_unicode-1.2.0/src/categories.rs /home/root-user/.cargo/registry/src/index.crates.io-6f17d22bba15001f/finl_unicode-1.2.0/src/grapheme_clusters.rs /home/root-user/.cargo/registry/src/index.crates.io-6f17d22bba15001f/finl_unicode-1.2.0/src/data/mod.rs /home/root-user/.cargo/registry/src/index.crates.io-6f17d22bba15001f/finl_unicode-1.2.0/src/data/characters.rs /home/root-user/.cargo/registry/src/index.crates.io-6f17d22bba15001f/finl_unicode-1.2.0/src/data/grapheme_property.rs
+
+/home/root-user/Desktop/programs/Rust/bannered/target/debug/deps/finl_unicode-339057747a4a1a3e.d: /home/root-user/.cargo/registry/src/index.crates.io-6f17d22bba15001f/finl_unicode-1.2.0/src/lib.rs /home/root-user/.cargo/registry/src/index.crates.io-6f17d22bba15001f/finl_unicode-1.2.0/src/categories.rs /home/root-user/.cargo/registry/src/index.crates.io-6f17d22bba15001f/finl_unicode-1.2.0/src/grapheme_clusters.rs /home/root-user/.cargo/registry/src/index.crates.io-6f17d22bba15001f/finl_unicode-1.2.0/src/data/mod.rs /home/root-user/.cargo/registry/src/index.crates.io-6f17d22bba15001f/finl_unicode-1.2.0/src/data/characters.rs /home/root-user/.cargo/registry/src/index.crates.io-6f17d22bba15001f/finl_unicode-1.2.0/src/data/grapheme_property.rs
+
+/home/root-user/.cargo/registry/src/index.crates.io-6f17d22bba15001f/finl_unicode-1.2.0/src/lib.rs:
+/home/root-user/.cargo/registry/src/index.crates.io-6f17d22bba15001f/finl_unicode-1.2.0/src/categories.rs:
+/home/root-user/.cargo/registry/src/index.crates.io-6f17d22bba15001f/finl_unicode-1.2.0/src/grapheme_clusters.rs:
+/home/root-user/.cargo/registry/src/index.crates.io-6f17d22bba15001f/finl_unicode-1.2.0/src/data/mod.rs:
+/home/root-user/.cargo/registry/src/index.crates.io-6f17d22bba15001f/finl_unicode-1.2.0/src/data/characters.rs:
+/home/root-user/.cargo/registry/src/index.crates.io-6f17d22bba15001f/finl_unicode-1.2.0/src/data/grapheme_property.rs:
