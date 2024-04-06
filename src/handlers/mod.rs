@@ -1,7 +1,4 @@
-pub mod handlers;
-pub mod ApiResponse;
+mod handlers;
+mod ApiResponse;
 
-pub use handlers:: {
-    Handlers,
-    healthiness_probe,
-};
+pub use handlers::Handlers;

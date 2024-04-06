@@ -5,17 +5,21 @@ use axum::{routing::{get, post, patch, delete}, Router};
 mod handlers;
 mod databases;
 
-use handlers::Handlers;
 use databases::postgres;
+use handlers::Handlers;
 
 #[tokio::main]
 async fn main() {
 
-    // handlers::schema_db().await
-    let handlers = Handlers::new().await;
+    Handlers::schema_db().await.expect("Error creating database");
 
     let app = Router::new()
-        .route("/", get(handlers::healthiness_probe));
+        .route("/", get(Handlers::healthiness_probe))
+        .route("/user_banner",get(Handlers::user_banner))
+        .route("/banner", get(Handlers::banner_get))
+        .route("/banner", post(Handlers::banner_post))
+        .route("/banner/:id", patch(Handlers::banner_patch))
+        .route("/banner/:id", delete(Handlers::banner_delete));
 
     let listener = tokio::net::TcpListener::bind("127.0.0.1:9000")
         .await

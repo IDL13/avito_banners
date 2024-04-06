@@ -2,7 +2,7 @@ use sqlx::{postgres::PgPoolOptions, PgPool};
 use std::error;
 
 pub struct Postgres {
-    conn: PgPool,
+    pub conn: PgPool,
 }
 
 impl Postgres {
