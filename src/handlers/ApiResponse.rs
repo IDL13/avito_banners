@@ -4,16 +4,15 @@ use std::error;
 use serde::{Serialize, Deserialize};
 
 const STATUS_204: &str = "Баннер успешно удален";
-const STATUS_400: &str = "Некорректные данные";
 const STATUS_401: &str = "Пользователь не авторизован";
 const STATUS_403: &str = "Пользователь не имеет доступа";
 const STATUS_404: &str = "Баннер для не найден";
-const STATUS_500: &str = "Внутренняя ошибка сервера";
 const SERVER_START: &str = "Сервер запущен";
 
 pub enum ApiResponse {
     JsonStr(),
-    JsonUserBanner(UserBanner),
+    JsonCustom(String),
+    JsonUserBanner(Vec<String>),
     JsonStatus204(),
     JsonStatus400(Json<Status400>),
     JsonStatus401(),
@@ -26,10 +25,11 @@ impl IntoResponse for ApiResponse {
     fn into_response(self) -> Response {
         match self {
             Self::JsonStr() => (StatusCode::OK,  Json(json!({"msg" : SERVER_START}))).into_response(),
+            Self::JsonCustom(msg) => (StatusCode::OK,  Json(json!({"msg" : msg}))).into_response(),
             Self::JsonUserBanner(response) => {
                 (
                     StatusCode::OK,
-                    Json(json!({"title" : response.title, "text" : response.text, "url" : response.url}))
+                    Json(json!(response.join(",")))
                 ).into_response()
             },
             Self::JsonStatus204() => (StatusCode::NO_CONTENT,  Json(json!({"msg" : STATUS_204}))).into_response(),
@@ -54,10 +54,10 @@ pub struct Status400 {
 }
 
 #[derive(Serialize, Deserialize)]
-pub struct UserBanner {
-    pub title: String,
-    pub text: String,
-    pub url: String,
+pub struct UserBannerRequest {
+    pub tag_id: i32,
+    pub feature_id: i32,
+    pub use_last_revision: bool,
 }
 
 #[derive(Serialize, Deserialize)]

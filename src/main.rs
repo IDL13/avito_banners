@@ -7,11 +7,14 @@ mod databases;
 
 use databases::postgres;
 use handlers::Handlers;
+use handlers::Middleware;
 
 #[tokio::main]
 async fn main() {
 
     Handlers::schema_db().await.expect("Error creating database");
+
+    let middleware = Middleware::new();
 
     let app = Router::new()
         .route("/", get(Handlers::healthiness_probe))
@@ -19,7 +22,8 @@ async fn main() {
         .route("/banner", get(Handlers::banner_get))
         .route("/banner", post(Handlers::banner_post))
         .route("/banner/:id", patch(Handlers::banner_patch))
-        .route("/banner/:id", delete(Handlers::banner_delete));
+        .route("/banner/:id", delete(Handlers::banner_delete))
+        .route("/auth", post(Handlers::auth));
 
     let listener = tokio::net::TcpListener::bind("127.0.0.1:9000")
         .await

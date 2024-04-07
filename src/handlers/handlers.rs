@@ -1,9 +1,15 @@
-use axum::Json;
+use axum::{extract::Request, http::request, middleware::Next, Json};
 use futures::TryStreamExt;
+use sha2::Sha256;
+use sqlx::postgres::PgRow;
 use sqlx::Error;
-
-use super::ApiResponse::{ApiResponse, BannerId, Status400, Status500};
+use sqlx::Row;
+use hmac::{Hmac, Mac};
+use jwt::{claims, SignWithKey};
+use std::{collections::BTreeMap, time::SystemTime};
+use super::ApiResponse::{ApiResponse, BannerId, Status400, Status500, UserBannerRequest};
 use crate::postgres::Postgres;
+
 
 pub struct Handlers {
 }
@@ -46,11 +52,53 @@ impl Handlers {
         .execute(&pool)
         .await?;
 
+        sqlx::query("CREATE TABLE IF NOT EXISTS Admins_tokens (
+            token VARCHAR(512),
+        )")
+        .execute(&pool)
+        .await?;
+
+        sqlx::query("CREATE TABLE IF NOT EXISTS Users_tokens (
+            token VARCHAR(512),
+        )")
+        .execute(&pool)
+        .await?;
+
     Ok(())
     }
 
-    pub async fn user_banner() -> ApiResponse {
-        ApiResponse::JsonStr()
+    pub async fn user_banner(Json(json): Json<UserBannerRequest>) -> ApiResponse {
+        let db = Postgres::new().await;
+
+        let pool = db.conn;
+
+        let mut ubr_vector: Vec<String> = Vec::new();
+
+        let mut result = sqlx::query("SELECT * FROM Banners
+            WHERE tag_id = $1,
+            feature_id = $2,
+            use_last_revision = $3")
+        .bind(json.tag_id)
+        .bind(json.feature_id)
+        .bind(json.use_last_revision)
+        .fetch(&pool);
+
+        while let Some(row) = match result.try_next().await {
+            Ok(row) => {row},
+            Err(_) => {
+                return ApiResponse::JsonStatus500(Json(Status500{error: "Неизвестная ошибка сервера".to_string()}));
+            }
+        } {
+            let title: String = row.try_get("title").expect("Query dont have title");
+            let text: String = row.try_get("text").expect("Query dont have text");
+            let url: String = row.try_get("url").expect("Query dont have url");
+
+            let json_string = format!(r#"{{ "title":{}, "text":{}, "url":{} }}"#, title, text, url).to_string();
+
+            ubr_vector.push(json_string);
+        };
+
+        ApiResponse::JsonUserBanner(ubr_vector)
     }
 
     pub async fn banner_get() -> ApiResponse {
@@ -62,6 +110,10 @@ impl Handlers {
     }
 
     pub async fn banner_patch() -> ApiResponse {
+        ApiResponse::JsonStr()
+    }
+
+    pub async fn auth() -> ApiResponse {
         ApiResponse::JsonStr()
     }
 
