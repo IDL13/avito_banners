@@ -12,7 +12,8 @@ const SERVER_START: &str = "Сервер запущен";
 pub enum ApiResponse {
     JsonStr(),
     JsonCustom(String),
-    JsonUserBanner(Vec<String>),
+    JsonUserBanner(String),
+    JsonBanner(Vec<String>),
     JsonStatus204(),
     JsonStatus400(Json<Status400>),
     JsonStatus401(),
@@ -29,9 +30,15 @@ impl IntoResponse for ApiResponse {
             Self::JsonUserBanner(response) => {
                 (
                     StatusCode::OK,
-                    Json(json!(response.join(",")))
+                    Json(json!(response))
                 ).into_response()
             },
+            Self::JsonBanner(response) => {
+                (
+                    StatusCode::OK,
+                    Json(json!(response.join(",")))
+                ).into_response()
+            }
             Self::JsonStatus204() => (StatusCode::NO_CONTENT,  Json(json!({"msg" : STATUS_204}))).into_response(),
             Self::JsonStatus400(err) => (StatusCode::BAD_REQUEST,  err).into_response(),
             Self::JsonStatus401() => (StatusCode::OK,  Json(json!({"msg" : STATUS_401}))).into_response(),
@@ -54,10 +61,18 @@ pub struct Status400 {
 }
 
 #[derive(Serialize, Deserialize)]
-pub struct UserBannerRequest {
+pub struct UserBannerRequestForUser {
     pub tag_id: i32,
     pub feature_id: i32,
     pub use_last_revision: bool,
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct UserBannerRequestAll {
+    pub feature_id: i32,
+    pub tag_id: i32,
+    pub limit: i32,
+    pub offset: i32,
 }
 
 #[derive(Serialize, Deserialize)]
