@@ -7,6 +7,7 @@ use sqlx::Row;
 use hmac::{Hmac, Mac};
 use jwt::{claims, SignWithKey};
 use std::{collections::BTreeMap, time::SystemTime};
+use super::ApiResponse::BannerRequestPost;
 use super::ApiResponse::{ApiResponse, BannerId, Status400, Status500, UserBannerRequestForUser, UserBannerRequestAll};
 use crate::postgres::Postgres;
 
@@ -152,8 +153,23 @@ impl Handlers {
         ApiResponse::JsonBanner(ubr_vector)
     }
 
-    pub async fn banner_post() -> ApiResponse {
-        ApiResponse::JsonStr()
+    pub async fn banner_post(Json(json): Json<BannerRequestPost>) -> ApiResponse {
+        let db = Postgres::new().await;
+
+        let pool = db.conn;
+
+        let result: (i32,) = sqlx::query_as("INSERT INTO Banners
+            (tag_ids, feature_id, title, text, url, is_active)
+            VALUES ($1, $2, $3, $4, $5, $6) RETURNING banner_id")
+        .bind(json.tag_ids)
+        .bind(json.feature_id)
+        .bind(json.title)
+        .bind(json.text)
+        .bind(json.url)
+        .bind(json.is_active)
+        .fetch_one(&pool).await.expect("Error from add Banner in db");
+
+        ApiResponse::JsonBannerPost(result.0)
     }
 
     pub async fn banner_patch() -> ApiResponse {

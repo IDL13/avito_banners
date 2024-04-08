@@ -14,6 +14,7 @@ pub enum ApiResponse {
     JsonCustom(String),
     JsonUserBanner(String),
     JsonBanner(Vec<String>),
+    JsonBannerPost(i32),
     JsonStatus204(),
     JsonStatus400(Json<Status400>),
     JsonStatus401(),
@@ -37,6 +38,12 @@ impl IntoResponse for ApiResponse {
                 (
                     StatusCode::OK,
                     Json(json!(response.join(",")))
+                ).into_response()
+            }
+            Self::JsonBannerPost(response) => {
+                (
+                    StatusCode::OK,
+                    Json(json!({"banner_id": response}))
                 ).into_response()
             }
             Self::JsonStatus204() => (StatusCode::NO_CONTENT,  Json(json!({"msg" : STATUS_204}))).into_response(),
@@ -73,6 +80,16 @@ pub struct UserBannerRequestAll {
     pub tag_id: i32,
     pub limit: i32,
     pub offset: i32,
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct BannerRequestPost {
+    pub tag_ids: Vec<i32>,
+    pub feature_id: i32,
+    pub title: String,
+    pub text: String,
+    pub url: String,
+    pub is_active: bool,
 }
 
 #[derive(Serialize, Deserialize)]
