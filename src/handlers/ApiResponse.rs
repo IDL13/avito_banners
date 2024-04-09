@@ -12,8 +12,8 @@ const SERVER_START: &str = "Сервер запущен";
 pub enum ApiResponse {
     JsonStr(),
     JsonCustom(String),
-    JsonUserBanner(String),
-    JsonBanner(Vec<String>),
+    JsonUserBanner(Content),
+    JsonBanner(Vec<BannerResponsePost>),
     JsonBannerPost(i32),
     JsonStatus204(),
     JsonStatus400(Json<Status400>),
@@ -31,13 +31,13 @@ impl IntoResponse for ApiResponse {
             Self::JsonUserBanner(response) => {
                 (
                     StatusCode::OK,
-                    Json(json!(response))
+                    Json(response)
                 ).into_response()
             },
             Self::JsonBanner(response) => {
                 (
                     StatusCode::OK,
-                    Json(json!(response.join(",")))
+                    Json(response)
                 ).into_response()
             }
             Self::JsonBannerPost(response) => {
@@ -86,10 +86,26 @@ pub struct UserBannerRequestAll {
 pub struct BannerRequestPost {
     pub tag_ids: Vec<i32>,
     pub feature_id: i32,
+    pub content: Content,
+    pub is_active: bool,
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct BannerResponsePost {
+    pub banner_id: i32,
+    pub tag_ids: Vec<i32>,
+    pub feature_id: i32,
+    pub content: Content,
+    pub is_active: bool,
+    pub created_at: String,
+    pub updated_at: String,
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct Content {
     pub title: String,
     pub text: String,
     pub url: String,
-    pub is_active: bool,
 }
 
 #[derive(Serialize, Deserialize)]

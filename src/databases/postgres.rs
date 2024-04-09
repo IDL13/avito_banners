@@ -16,6 +16,6 @@ impl Postgres {
 async fn connection() -> PgPool {
     PgPoolOptions::new()
         .max_connections(100)
-        .connect("postgres://banned:banned@localhost:5555/banned")
+        .connect("postgres://avito_banner:avito_banner@localhost:5555/avito_banner")
         .await.expect("Bad connection on database")
 }

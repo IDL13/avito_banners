@@ -1,16 +1,12 @@
-use axum::{extract::Request, http::request, middleware::Next, Json};
+use axum::Json;
 use futures::TryStreamExt;
-use sha2::Sha256;
-use sqlx::postgres::PgRow;
 use sqlx::Error;
 use sqlx::Row;
-use hmac::{Hmac, Mac};
-use jwt::{claims, SignWithKey};
-use std::{collections::BTreeMap, time::SystemTime};
+use chrono::{DateTime, Utc};
 use super::ApiResponse::BannerRequestPost;
-use super::ApiResponse::{ApiResponse, BannerId, Status400, Status500, UserBannerRequestForUser, UserBannerRequestAll};
-use crate::postgres::Postgres;
-
+use super::ApiResponse::Content;
+use super::ApiResponse::{ApiResponse, BannerId, Status400, Status500, UserBannerRequestForUser, UserBannerRequestAll, BannerResponsePost};
+use crate::databases::postgres::Postgres;
 
 pub struct Handlers {
 }
@@ -32,10 +28,9 @@ impl Handlers {
             title VARCHAR(512),
             text VARCHAR(512),
             url VARCHAR(512),
-            is_active BIT,
-            created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-            updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW())
-        )")
+            is_active BOOLEAN,
+            created_at VARCHAR(512),
+            updated_at VARCHAR(512))")
         .execute(&pool)
         .await?;
 
@@ -46,22 +41,19 @@ impl Handlers {
             title VARCHAR(512),
             text VARCHAR(512),
             url VARCHAR(512),
-            is_active BIT,
-            created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-            updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW())
-        )")
+            is_active BOOLEAN,
+            created_at VARCHAR(512),
+            updated_at VARCHAR(512))")
         .execute(&pool)
         .await?;
 
         sqlx::query("CREATE TABLE IF NOT EXISTS Admins_tokens (
-            token VARCHAR(512),
-        )")
+            token VARCHAR(512))")
         .execute(&pool)
         .await?;
 
         sqlx::query("CREATE TABLE IF NOT EXISTS Users_tokens (
-            token VARCHAR(512),
-        )")
+            token VARCHAR(512))")
         .execute(&pool)
         .await?;
 
@@ -74,9 +66,7 @@ impl Handlers {
         let pool = db.conn;
 
         let mut result = sqlx::query("SELECT * FROM Banners
-            WHERE tag_id = $1,
-            feature_id = $2,
-            use_last_revision = $3")
+            WHERE $1 = ANY(tag_ids) AND feature_id = $2 AND is_active = $3")
         .bind(json.tag_id)
         .bind(json.feature_id)
         .bind(json.use_last_revision)
@@ -84,7 +74,8 @@ impl Handlers {
 
         while let Some(row) = match result.try_next().await {
             Ok(row) => {row},
-            Err(_) => {
+            Err(err) => {
+                println!("{}", err);
                 return ApiResponse::JsonStatus500(Json(Status500{error: "Неизвестная ошибка сервера".to_string()}));
             }
         } {
@@ -92,9 +83,13 @@ impl Handlers {
             let text: String = row.try_get("text").expect("Query dont have text");
             let url: String = row.try_get("url").expect("Query dont have url");
 
-            let json_string = format!(r#"{{ "title":{}, "text":{}, "url":{} }}"#, title, text, url).to_string();
+            let content = Content {
+                title,
+                text, 
+                url,
+            };
 
-            return ApiResponse::JsonUserBanner(json_string)
+            return ApiResponse::JsonUserBanner(content)
         };
 
         ApiResponse::JsonStatus404()
@@ -105,11 +100,10 @@ impl Handlers {
 
         let pool = db.conn;
 
-        let mut ubr_vector: Vec<String> = Vec::new();
+        let mut ubr_vector: Vec<BannerResponsePost> = Vec::new();
 
         let mut result = sqlx::query("SELECT * FROM Banners
-            WHERE feature_id = $1,
-            tag_id = $2
+            WHERE feature_id = $1 AND $2 = ANY(tag_ids)
             LIMIT $3 OFFSET $4")
         .bind(json.feature_id)
         .bind(json.tag_id)
@@ -119,12 +113,13 @@ impl Handlers {
 
         while let Some(row) = match result.try_next().await {
             Ok(row) => {row},
-            Err(_) => {
+            Err(err) => {
+                println!("{}", err);
                 return ApiResponse::JsonStatus500(Json(Status500{error: "Неизвестная ошибка сервера".to_string()}));
             }
         } {
             let banner_id: i32 = row.try_get("banner_id").expect("Query dont have banner_id");
-            let tag_id: Vec<i32> = row.try_get("tag_id").expect("Query dont have tag_id");
+            let tag_ids: Vec<i32> = row.try_get("tag_ids").expect("Query dont have tag_id");
             let feature_id: i32 = row.try_get("feature_id").expect("Query dont have feature_id");
             let title: String = row.try_get("title").expect("Query dont have title");
             let text: String = row.try_get("text").expect("Query dont have text");
@@ -133,21 +128,21 @@ impl Handlers {
             let created_at: String = row.try_get("created_at").expect("Query dont have created_at");
             let updated_at: String = row.try_get("updated_at").expect("Query dont have updated_at");
 
-            let json_string = format!(r#"{{
-                "banner_id":{},
-                "tag_id":{:?},
-                "feature_id":{},
-                "content": {{
-                    "title":{},
-                    "text":{},
-                    "url":{}
-                }},
-                "is_active":{},
-                "created_at":{},
-                "updated_at":{}
-            }}"#,banner_id, tag_id, feature_id, title, text, url, is_active, created_at, updated_at).to_string();
+            let banner = BannerResponsePost {
+                banner_id,
+                tag_ids,
+                feature_id,
+                content: Content {
+                    title,
+                    text,
+                    url,
+                },
+                is_active,
+                created_at,
+                updated_at
+            };
 
-            ubr_vector.push(json_string);
+            ubr_vector.push(banner);
         };
 
         ApiResponse::JsonBanner(ubr_vector)
@@ -159,14 +154,16 @@ impl Handlers {
         let pool = db.conn;
 
         let result: (i32,) = sqlx::query_as("INSERT INTO Banners
-            (tag_ids, feature_id, title, text, url, is_active)
-            VALUES ($1, $2, $3, $4, $5, $6) RETURNING banner_id")
+            (tag_ids, feature_id, title, text, url, is_active, created_at, updated_at)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING banner_id")
         .bind(json.tag_ids)
         .bind(json.feature_id)
-        .bind(json.title)
-        .bind(json.text)
-        .bind(json.url)
+        .bind(json.content.title)
+        .bind(json.content.text)
+        .bind(json.content.url)
         .bind(json.is_active)
+        .bind(Utc::now().to_string())
+        .bind(Utc::now().to_string())
         .fetch_one(&pool).await.expect("Error from add Banner in db");
 
         ApiResponse::JsonBannerPost(result.0)
