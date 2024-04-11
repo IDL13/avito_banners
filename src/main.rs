@@ -22,8 +22,7 @@ async fn main() {
         .route("/banner", get(Handlers::banner_get))
         .route("/banner", post(Handlers::banner_post))
         .route("/banner/:id", patch(Handlers::banner_patch))
-        .route("/banner/:id", delete(Handlers::banner_delete))
-        .route("/auth", post(Handlers::auth));
+        .route("/banner/:id", delete(Handlers::banner_delete));
 
     let listener = tokio::net::TcpListener::bind("127.0.0.1:9000")
         .await

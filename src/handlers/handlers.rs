@@ -1,3 +1,4 @@
+use axum::extract::Path;
 use axum::Json;
 use futures::TryStreamExt;
 use sqlx::Error;
@@ -22,19 +23,6 @@ impl Handlers {
         let pool = db.conn;
 
         sqlx::query("CREATE TABLE IF NOT EXISTS Banners (
-            banner_id SERIAL PRIMARY KEY,
-            tag_ids INTEGER[],
-            feature_id INTEGER,
-            title VARCHAR(512),
-            text VARCHAR(512),
-            url VARCHAR(512),
-            is_active BOOLEAN,
-            created_at VARCHAR(512),
-            updated_at VARCHAR(512))")
-        .execute(&pool)
-        .await?;
-
-        sqlx::query("CREATE TABLE IF NOT EXISTS Banners_last (
             banner_id SERIAL PRIMARY KEY,
             tag_ids INTEGER[],
             feature_id INTEGER,
@@ -169,25 +157,44 @@ impl Handlers {
         ApiResponse::JsonBannerPost(result.0)
     }
 
-    pub async fn banner_patch() -> ApiResponse {
-        ApiResponse::JsonStr()
+    pub async fn banner_patch(Path(id): Path<i32>, Json(json): Json<BannerRequestPost>) -> ApiResponse {
+        let db = Postgres::new().await;
+
+        let pool = db.conn;
+
+        let _ = sqlx::query("UPDATE Banners
+            SET  tag_ids = $1,
+            feature_id = $2,
+            title = $3,
+            text = $4,
+            url = $5,
+            is_active = $6,
+            updated_at = $7
+            WHERE banner_id = $8")
+        .bind(json.tag_ids)
+        .bind(json.feature_id)
+        .bind(json.content.title)
+        .bind(json.content.text)
+        .bind(json.content.url)
+        .bind(json.is_active)
+        .bind(Utc::now().to_string())
+        .bind(id)
+        .execute(&pool).await;
+
+        ApiResponse::JsonStatus200()
     }
 
-    pub async fn auth() -> ApiResponse {
-        ApiResponse::JsonStr()
-    }
-
-    pub async fn banner_delete(Json(json): Json<BannerId>) -> ApiResponse {
+    pub async fn banner_delete(Path(id): Path<i32>) -> ApiResponse {
         let db = Postgres::new().await;
 
         let pool = db.conn;
 
         let result = sqlx::query("DELETE FROM Banners WHERE id = $1")
-        .bind(json.id)
+        .bind(id)
         .execute(&pool).await;
 
         match result {
-            Ok(_) => {},
+            Ok(_) => {return ApiResponse::JsonStatus200()},
             Err(err) => {
                 match err {
                     Error::RowNotFound => {

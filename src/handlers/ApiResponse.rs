@@ -11,11 +11,11 @@ const SERVER_START: &str = "Сервер запущен";
 
 pub enum ApiResponse {
     JsonStr(),
-    JsonCustom(String),
     JsonUserBanner(Content),
     JsonBanner(Vec<BannerResponsePost>),
     JsonBannerPost(i32),
     JsonStatus204(),
+    JsonStatus200(),
     JsonStatus400(Json<Status400>),
     JsonStatus401(),
     JsonStatus403(),
@@ -27,7 +27,6 @@ impl IntoResponse for ApiResponse {
     fn into_response(self) -> Response {
         match self {
             Self::JsonStr() => (StatusCode::OK,  Json(json!({"msg" : SERVER_START}))).into_response(),
-            Self::JsonCustom(msg) => (StatusCode::OK,  Json(json!({"msg" : msg}))).into_response(),
             Self::JsonUserBanner(response) => {
                 (
                     StatusCode::OK,
@@ -46,7 +45,8 @@ impl IntoResponse for ApiResponse {
                     Json(json!({"banner_id": response}))
                 ).into_response()
             }
-            Self::JsonStatus204() => (StatusCode::NO_CONTENT,  Json(json!({"msg" : STATUS_204}))).into_response(),
+            Self::JsonStatus204() => (StatusCode::OK,  Json(json!({"msg" : STATUS_204}))).into_response(),
+            Self::JsonStatus200() => (StatusCode::OK, Json(json!({"msg": "Запрос успешно выполнен"}))).into_response(),
             Self::JsonStatus400(err) => (StatusCode::BAD_REQUEST,  err).into_response(),
             Self::JsonStatus401() => (StatusCode::OK,  Json(json!({"msg" : STATUS_401}))).into_response(),
             Self::JsonStatus403() => (StatusCode::OK,  Json(json!({"msg" : STATUS_403}))).into_response(),
