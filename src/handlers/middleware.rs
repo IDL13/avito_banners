@@ -18,9 +18,22 @@ use crate::postgres::Postgres;
 
 use rand::Rng;
 
-pub async fn my_middleware(headers: HeaderMap, request: Request, next: Next) -> Result<Response, ApiResponse>{
+pub async fn jwt_for_admin(headers: HeaderMap, request: Request, next: Next) -> Result<Response, ApiResponse>{
     match get_token(&headers) {
-        Some(token) if token_is_valid(token).await => {
+        Some(token) if admin_token_is_valid(token).await => {
+            let response = next.run(request).await;
+            Ok(response)
+        }
+
+        _ => {
+            Err(ApiResponse::JsonStatus401())
+        }
+    }
+}
+
+pub async fn jwt_for_user(headers: HeaderMap, request: Request, next: Next) -> Result<Response, ApiResponse>{
+    match get_token(&headers) {
+        Some(token) if user_token_is_valid(token).await => {
             let response = next.run(request).await;
             Ok(response)
         }
@@ -47,12 +60,36 @@ fn get_token(headers: &HeaderMap) -> Option<&str> {
     }
 }
 
-async fn token_is_valid(token: &str) -> bool {
+async fn admin_token_is_valid(token: &str) -> bool {
     let db = Postgres::new().await;
 
     let pool = db.conn;
 
     let mut result = sqlx::query("SELECT * FROM Admins_tokens
+        WHERE token = $1")
+    .bind(token)
+    .fetch(&pool);
+
+    match result.try_next().await {
+        Ok(row) => {
+            match row {
+                Some(_) => return true,
+                None => return false,
+            };
+        },
+        Err(err) => {
+            println!("{}", err);
+            return false
+        }
+    };
+}
+
+async fn user_token_is_valid(token: &str) -> bool {
+    let db = Postgres::new().await;
+
+    let pool = db.conn;
+
+    let mut result = sqlx::query("SELECT * FROM Users_tokens
         WHERE token = $1")
     .bind(token)
     .fetch(&pool);

@@ -240,7 +240,6 @@ impl Handlers {
         ApiResponse::JsonStatus500(Json(Status500{error: "Неизвестная ошибка сервера".to_string()}))
     }
 
-
     pub async fn new_token() -> ApiResponse {
         match new_token() {
             Ok(token) => {println!("{}", token)}

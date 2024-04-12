@@ -1,0 +1,1 @@
+axum::middleware::FromFn<impl futures::Future<Output = Result<axum::http::Response<axum::body::Body>, handlers::ApiResponse::ApiResponse>>, (), Route, _>
