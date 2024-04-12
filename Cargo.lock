@@ -348,6 +348,7 @@ dependencies = [
  "futures",
  "hmac",
  "jwt",
+ "rand",
  "reqwest",
  "serde",
  "serde_json",

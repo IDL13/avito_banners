@@ -1,44 +1,96 @@
+use std::collections::BTreeMap;
+use std::error;
 use axum::{
-    body::Body, http::{response, HeaderMap, Request, StatusCode}, middleware::Next, response::{IntoResponse, Response}, Json
+    extract::Request, handler::Handler, http::{self, HeaderMap}, middleware::{self, Next}, response::Response, routing::get, Router
 };
-use sha2::Sha256;
+use futures::TryStreamExt;
+use std::iter::zip;
+use chrono::Utc;
 use hmac::{Hmac, Mac};
-use jwt::{claims, SignWithKey};
-use std::{collections::BTreeMap, time::SystemTime};
+use jwt::{token, Header, SignWithKey};
+use reqwest::{header::AUTHORIZATION, StatusCode};
+use sha2::Sha256;
 
 use crate::handlers::ApiResponse::*;
 use serde_json::json;
 
-pub struct Middleware {
+use crate::postgres::Postgres;
 
-}
+use rand::Rng;
 
-impl Middleware {
-    pub fn new() -> Self {
-        Self {}
-    }
+pub async fn my_middleware(headers: HeaderMap, request: Request, next: Next) -> Result<Response, ApiResponse>{
+    match get_token(&headers) {
+        Some(token) if token_is_valid(token).await => {
+            let response = next.run(request).await;
+            Ok(response)
+        }
 
-    pub async fn add_jwt_token(mut request: Request<Body>, next: Next) -> impl IntoResponse {
-        let b_string = SystemTime::now().elapsed().unwrap().as_secs_f32().to_be_bytes();
-
-        let key: Hmac<Sha256> = Hmac::new_from_slice(&b_string).expect("Error from Sha256 algorithm");
-
-        let mut claims = BTreeMap::new(); 
-        claims.insert("sub", "someone");
-        let token_str = claims.sign_with_key(&key);
-
-        match token_str {
-            Ok(token) => {
-                let headers = request.headers_mut();
-                headers.insert(axum::http::header::AUTHORIZATION, axum::http::header::HeaderValue::from_str(&token).unwrap());
-
-                let response = next.run(request).await;
-
-                response
-            },
-            Err(_) => {
-                (StatusCode::INTERNAL_SERVER_ERROR,  Json(json!({"msg": "Неизвестная ошибка"}))).into_response()
-            },
-        };
+        _ => {
+            Err(ApiResponse::JsonStatus401())
+        }
     }
 }
+
+fn get_token(headers: &HeaderMap) -> Option<&str> {
+    match headers.get(AUTHORIZATION) {
+        Some(token) => match token.to_str() {
+            Ok(token_str) => Some(token_str),
+            Err(err) => {
+                eprintln!("Error parsing token: {}", err);
+                None
+            }
+        },
+        None => {
+            eprintln!("Authorization header not found");
+            None
+        }
+    }
+}
+
+async fn token_is_valid(token: &str) -> bool {
+    let db = Postgres::new().await;
+
+    let pool = db.conn;
+
+    let mut result = sqlx::query("SELECT * FROM Admins_tokens
+        WHERE token = $1")
+    .bind(token)
+    .fetch(&pool);
+
+    match result.try_next().await {
+        Ok(row) => {
+            match row {
+                Some(_) => return true,
+                None => return false,
+            };
+        },
+        Err(err) => {
+            println!("{}", err);
+            return false
+        }
+    };
+}
+
+pub fn new_token() -> Result<String, Box<dyn error::Error>> {
+    let SALT1 = "JL#K@J4lj23l4kj23ljj";
+    let SALT2 = "j3kjl3kj4v0293jv23;vlk2;l3;kv";
+    let SALt3 = "lj3[,c2.xj0x4j4jx094x20j4vh,2c-hx2.3xj.0";
+
+    let mut rng = rand::thread_rng();
+
+    let salt = match rng.gen_range(0..10000) {
+        0..=5000 => SALT1.as_bytes(), 
+        5001..=10000 => SALT2.as_bytes(),
+        _ => SALt3.as_bytes(),
+    };
+
+    let hash_key: Vec<u8> = [Utc::now().to_string().as_bytes(), salt].concat();
+
+    let key: Hmac<Sha256> = Hmac::new_from_slice(&hash_key)?;
+    let mut claims = BTreeMap::new();
+    claims.insert("sub", "someone");
+    let token_str = claims.sign_with_key(&key)?;
+
+    Ok(token_str)
+}
+

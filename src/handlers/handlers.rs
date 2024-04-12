@@ -1,4 +1,7 @@
+use std::result;
+
 use axum::extract::Path;
+use axum::middleware;
 use axum::Json;
 use futures::TryStreamExt;
 use sqlx::Error;
@@ -8,6 +11,7 @@ use super::ApiResponse::BannerRequestPost;
 use super::ApiResponse::Content;
 use super::ApiResponse::{ApiResponse, BannerId, Status400, Status500, UserBannerRequestForUser, UserBannerRequestAll, BannerResponsePost};
 use crate::databases::postgres::Postgres;
+use super::middleware::new_token;
 
 pub struct Handlers {
 }
@@ -162,7 +166,7 @@ impl Handlers {
 
         let pool = db.conn;
 
-        let _ = sqlx::query("UPDATE Banners
+        let result = sqlx::query("UPDATE Banners
             SET  tag_ids = $1,
             feature_id = $2,
             title = $3,
@@ -181,7 +185,27 @@ impl Handlers {
         .bind(id)
         .execute(&pool).await;
 
-        ApiResponse::JsonStatus200()
+        match result {
+            Ok(_) => {return ApiResponse::JsonStatus200()},
+            Err(err) => {
+                match err {
+                    Error::RowNotFound => {
+                        ApiResponse::JsonStatus404();
+                    }
+                    Error::TypeNotFound { type_name } => {
+                        ApiResponse::JsonStatus400(Json(Status400 { 
+                            error: "Неизвестная ошибка сервера".to_string(),
+                            type_name: type_name,
+                        }));
+                    },
+                    _ => {
+                        ApiResponse::JsonStatus500(Json(Status500{error: "Неизвестная ошибка сервера".to_string()}));
+                    },
+                }
+            },
+        };
+
+        ApiResponse::JsonStatus500(Json(Status500{error: "Неизвестная ошибка сервера".to_string()}))
     }
 
     pub async fn banner_delete(Path(id): Path<i32>) -> ApiResponse {
@@ -213,7 +237,16 @@ impl Handlers {
             },
         };
 
-        ApiResponse::JsonStatus204()
+        ApiResponse::JsonStatus500(Json(Status500{error: "Неизвестная ошибка сервера".to_string()}))
     }
 
+
+    pub async fn new_token() -> ApiResponse {
+        match new_token() {
+            Ok(token) => {println!("{}", token)}
+            Err(err) => {println!("{:?}", err)}
+        }
+
+        ApiResponse::JsonStatus200()
+    }
 }

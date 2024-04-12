@@ -3,4 +3,4 @@ mod ApiResponse;
 mod middleware;
 
 pub use handlers::Handlers;
-pub use middleware::Middleware;
+pub use middleware::{new_token, my_middleware};

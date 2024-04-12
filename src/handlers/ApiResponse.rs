@@ -6,7 +6,7 @@ use serde::{Serialize, Deserialize};
 const STATUS_204: &str = "Баннер успешно удален";
 const STATUS_401: &str = "Пользователь не авторизован";
 const STATUS_403: &str = "Пользователь не имеет доступа";
-const STATUS_404: &str = "Баннер для не найден";
+const STATUS_404: &str = "Баннер не найден";
 const SERVER_START: &str = "Сервер запущен";
 
 pub enum ApiResponse {
@@ -48,7 +48,7 @@ impl IntoResponse for ApiResponse {
             Self::JsonStatus204() => (StatusCode::OK,  Json(json!({"msg" : STATUS_204}))).into_response(),
             Self::JsonStatus200() => (StatusCode::OK, Json(json!({"msg": "Запрос успешно выполнен"}))).into_response(),
             Self::JsonStatus400(err) => (StatusCode::BAD_REQUEST,  err).into_response(),
-            Self::JsonStatus401() => (StatusCode::OK,  Json(json!({"msg" : STATUS_401}))).into_response(),
+            Self::JsonStatus401() => (StatusCode::UNAUTHORIZED,  Json(json!({"msg" : STATUS_401}))).into_response(),
             Self::JsonStatus403() => (StatusCode::OK,  Json(json!({"msg" : STATUS_403}))).into_response(),
             Self::JsonStatus404() => (StatusCode::OK,  Json(json!({"msg" : STATUS_404}))).into_response(),
             Self::JsonStatus500(err) => (StatusCode::INTERNAL_SERVER_ERROR,  err).into_response(),
