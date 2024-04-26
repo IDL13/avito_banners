@@ -1,16 +1,22 @@
 use std::result;
+use std::task::Poll;
+use std::thread;
 
 use axum::extract::Path;
 use axum::middleware;
 use axum::Json;
+use futures::channel::mpsc;
 use futures::TryStreamExt;
+use serde_json::json;
 use sqlx::Error;
 use sqlx::Row;
 use chrono::{DateTime, Utc};
+use super::ApiResponse::BannerForDeleteMany;
 use super::ApiResponse::BannerRequestPost;
 use super::ApiResponse::Content;
 use super::ApiResponse::{ApiResponse, BannerId, Status400, Status500, UserBannerRequestForUser, UserBannerRequestAll, BannerResponsePost};
 use crate::databases::postgres::Postgres;
+use crate::databases::redis::Redis;
 use super::middleware::new_token;
 
 pub struct Handlers {
@@ -54,8 +60,27 @@ impl Handlers {
 
     pub async fn user_banner(Json(json): Json<UserBannerRequestForUser>) -> ApiResponse {
         let db = Postgres::new().await;
+        let mut cache = Redis::new();
 
         let pool = db.conn;
+
+        if cache.check(json.tag_id, json.feature_id) {
+            match cache.get(json.tag_id, json.feature_id) {
+                Ok(strings) => {
+                    let content = Content {
+                        title: strings.0,
+                        text: strings.1,
+                        url: strings.2
+                    };
+
+                    return ApiResponse::JsonUserBanner(content)
+                }
+                Err(err) => {
+                    println!("Err: {}", err);
+                    return ApiResponse::JsonStatus500(Json(Status500{error: "Неизвестная ошибка сервера".to_string()}))
+                }
+            }
+        };
 
         let mut result = sqlx::query("SELECT * FROM Banners
             WHERE $1 = ANY(tag_ids) AND feature_id = $2 AND is_active = $3")
@@ -142,9 +167,20 @@ impl Handlers {
 
     pub async fn banner_post(Json(json): Json<BannerRequestPost>) -> ApiResponse {
         let db = Postgres::new().await;
+        let mut cache = Redis::new();
 
         let pool = db.conn;
 
+        for id in json.tag_ids.iter() {
+            if !cache.check(id.clone(), json.feature_id.clone()) {
+                let response = cache.set(
+                    id.clone(),
+                    json.feature_id,
+                    vec![json.content.title.clone(), json.content.text.clone(), json.content.url.clone()]
+                );
+                println!("{}", response)
+            }
+        }
         let result: (i32,) = sqlx::query_as("INSERT INTO Banners
             (tag_ids, feature_id, title, text, url, is_active, created_at, updated_at)
             VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING banner_id")
@@ -213,7 +249,7 @@ impl Handlers {
 
         let pool = db.conn;
 
-        let result = sqlx::query("DELETE FROM Banners WHERE id = $1")
+        let result = sqlx::query("DELETE FROM Banners WHERE banner_id = $1")
         .bind(id)
         .execute(&pool).await;
 
@@ -247,5 +283,36 @@ impl Handlers {
         }
 
         ApiResponse::JsonStatus200()
+    }
+
+    pub async fn banner_delete_many(Json(json): Json<BannerForDeleteMany>) -> ApiResponse {
+        let db = Postgres::new().await;
+
+        let pool = db.conn;
+
+        let req: usize = json.tag_ids.len();
+        let mut res: usize = 0;
+
+        for tag in json.tag_ids.into_iter() {
+            
+            let result = sqlx::query("DELETE FROM Banners WHERE $1 = ANY(tag_ids)")
+            .bind(tag)
+            .execute(&pool).await;
+
+            match result {
+                Ok(_) => {
+                    res += 1;
+                },
+                Err(err) => {
+                    println!("Error in tag{} : {}", tag, err)
+                },
+            };
+        }
+
+        if req != res {
+           return ApiResponse::JsonStatus500(Json(Status500{error: "Не полное удаление".to_string()}))
+        } else {
+            return ApiResponse::JsonStatus200();
+        }
     }
 }

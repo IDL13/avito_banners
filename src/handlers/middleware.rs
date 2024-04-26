@@ -1,8 +1,9 @@
 use std::collections::BTreeMap;
 use std::error;
 use axum::{
-    extract::Request, handler::Handler, http::{self, HeaderMap}, middleware::{self, Next}, response::Response, routing::get, Router
+    extract::Request, Json,  handler::Handler, http::{self, HeaderMap}, middleware::{self, Next}, response::Response, routing::get, Router
 };
+use tower_cookies::{Cookie, CookieManager, Cookies};
 use futures::TryStreamExt;
 use std::iter::zip;
 use chrono::Utc;
@@ -19,6 +20,35 @@ use crate::postgres::Postgres;
 use rand::Rng;
 
 pub async fn jwt_for_admin(headers: HeaderMap, request: Request, next: Next) -> Result<Response, ApiResponse>{
+    // if cookies.get("SESSION_COOKIE").is_none() {
+    //     match get_token(&headers) {
+    //         Some(token) if admin_token_is_valid(token).await => {
+    //             cookies.add(Cookie::new("SESSION_COOKIE", token.to_string()));
+    //             let response = next.run(request).await;
+    //             Ok(response)
+    //         }
+    
+    //         _ => {
+    //             Err(ApiResponse::JsonStatus401())
+    //         }
+    //     }
+    // } else {
+    //     match cookies.get("SESSION_COOKIE") {
+    //         Some(cookie) => {
+    //             let token = cookie.value();
+    //             if admin_token_is_valid(token).await {
+    //                 let response = next.run(request).await;
+    //                 Ok(response)
+    //             } else {
+    //                 Err(ApiResponse::JsonStatus401())
+    //             }
+    //         }, 
+    //         None => {
+    //             println!("Error: Отсутствует значение в по ключю в cookie файле");
+    //             Err(ApiResponse::JsonStatus500(Json(Status500{error: "Неизвестная ошибка сервера".to_string()})))
+    //         }
+    //     }
+    // }
     match get_token(&headers) {
         Some(token) if admin_token_is_valid(token).await => {
             let response = next.run(request).await;
@@ -47,7 +77,7 @@ pub async fn jwt_for_user(headers: HeaderMap, request: Request, next: Next) -> R
 fn get_token(headers: &HeaderMap) -> Option<&str> {
     match headers.get(AUTHORIZATION) {
         Some(token) => match token.to_str() {
-            Ok(token_str) => Some(token_str),
+            Ok(token_str) => {Some(token_str)},
             Err(err) => {
                 eprintln!("Error parsing token: {}", err);
                 None

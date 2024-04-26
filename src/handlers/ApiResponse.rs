@@ -1,7 +1,7 @@
-use axum::{http::StatusCode, response::{ErrorResponse, IntoResponse, Response}, Json};
+use axum::{extract, http::StatusCode, response::{ErrorResponse, IntoResponse, Response}, Json};
 use serde_json::json;
 use std::error;
-use serde::{Serialize, Deserialize};
+use serde::{de::DeserializeOwned, Deserialize, Serialize};
 
 const STATUS_204: &str = "Баннер успешно удален";
 const STATUS_401: &str = "Пользователь не авторизован";
@@ -14,7 +14,6 @@ pub enum ApiResponse {
     JsonUserBanner(Content),
     JsonBanner(Vec<BannerResponsePost>),
     JsonBannerPost(i32),
-    JsonStatus204(),
     JsonStatus200(),
     JsonStatus400(Json<Status400>),
     JsonStatus401(),
@@ -45,7 +44,6 @@ impl IntoResponse for ApiResponse {
                     Json(json!({"banner_id": response}))
                 ).into_response()
             }
-            Self::JsonStatus204() => (StatusCode::OK,  Json(json!({"msg" : STATUS_204}))).into_response(),
             Self::JsonStatus200() => (StatusCode::OK, Json(json!({"msg": "Запрос успешно выполнен"}))).into_response(),
             Self::JsonStatus400(err) => (StatusCode::BAD_REQUEST,  err).into_response(),
             Self::JsonStatus401() => (StatusCode::UNAUTHORIZED,  Json(json!({"msg" : STATUS_401}))).into_response(),
@@ -111,4 +109,9 @@ pub struct Content {
 #[derive(Serialize, Deserialize)]
 pub struct BannerId {
     pub id: i32,
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct BannerForDeleteMany {
+    pub tag_ids: Vec<i32>
 }
