@@ -89,6 +89,18 @@ pub struct BannerRequestPost {
 }
 
 #[derive(Serialize, Deserialize)]
+pub struct Banner {
+    pub banner_id: i32,
+    pub tag_ids: Vec<i32>,
+    pub feature_id: i32,
+    pub content: Content,
+    pub is_active: bool,
+    pub version: i32,
+    pub created_at: String,
+    pub updated_at: String,
+}
+
+#[derive(Serialize, Deserialize)]
 pub struct BannerResponsePost {
     pub banner_id: i32,
     pub tag_ids: Vec<i32>,

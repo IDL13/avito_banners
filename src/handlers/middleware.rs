@@ -3,52 +3,20 @@ use std::error;
 use axum::{
     extract::Request, Json,  handler::Handler, http::{self, HeaderMap}, middleware::{self, Next}, response::Response, routing::get, Router
 };
-use tower_cookies::{Cookie, CookieManager, Cookies};
 use futures::TryStreamExt;
-use std::iter::zip;
 use chrono::Utc;
 use hmac::{Hmac, Mac};
 use jwt::{token, Header, SignWithKey};
-use reqwest::{header::AUTHORIZATION, StatusCode};
+use reqwest::{header::AUTHORIZATION};
 use sha2::Sha256;
 
 use crate::handlers::ApiResponse::*;
-use serde_json::json;
 
 use crate::postgres::Postgres;
 
 use rand::Rng;
 
 pub async fn jwt_for_admin(headers: HeaderMap, request: Request, next: Next) -> Result<Response, ApiResponse>{
-    // if cookies.get("SESSION_COOKIE").is_none() {
-    //     match get_token(&headers) {
-    //         Some(token) if admin_token_is_valid(token).await => {
-    //             cookies.add(Cookie::new("SESSION_COOKIE", token.to_string()));
-    //             let response = next.run(request).await;
-    //             Ok(response)
-    //         }
-    
-    //         _ => {
-    //             Err(ApiResponse::JsonStatus401())
-    //         }
-    //     }
-    // } else {
-    //     match cookies.get("SESSION_COOKIE") {
-    //         Some(cookie) => {
-    //             let token = cookie.value();
-    //             if admin_token_is_valid(token).await {
-    //                 let response = next.run(request).await;
-    //                 Ok(response)
-    //             } else {
-    //                 Err(ApiResponse::JsonStatus401())
-    //             }
-    //         }, 
-    //         None => {
-    //             println!("Error: Отсутствует значение в по ключю в cookie файле");
-    //             Err(ApiResponse::JsonStatus500(Json(Status500{error: "Неизвестная ошибка сервера".to_string()})))
-    //         }
-    //     }
-    // }
     match get_token(&headers) {
         Some(token) if admin_token_is_valid(token).await => {
             let response = next.run(request).await;
@@ -158,6 +126,14 @@ pub fn new_token() -> Result<String, Box<dyn error::Error>> {
     claims.insert("sub", "someone");
     let token_str = claims.sign_with_key(&key)?;
 
+    Ok(token_str)
+}
+
+pub fn get_hash(id:i32, version:i32) -> Result<String, Box<dyn error::Error>> {
+    let key: Hmac<Sha256> = Hmac::new_from_slice(&(id + version).to_be_bytes())?;
+    let mut claims = BTreeMap::new();
+    claims.insert("sub", "someone");
+    let token_str = claims.sign_with_key(&key)?;
     Ok(token_str)
 }
 

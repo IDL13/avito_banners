@@ -11,10 +11,12 @@ use serde_json::json;
 use sqlx::Error;
 use sqlx::Row;
 use chrono::{DateTime, Utc};
+use super::middleware::get_hash;
 use super::ApiResponse::BannerForDeleteMany;
 use super::ApiResponse::BannerRequestPost;
 use super::ApiResponse::Content;
 use super::ApiResponse::{ApiResponse, BannerId, Status400, Status500, UserBannerRequestForUser, UserBannerRequestAll, BannerResponsePost};
+use super::Banner;
 use crate::databases::postgres::Postgres;
 use crate::databases::redis::Redis;
 use super::middleware::new_token;
@@ -40,6 +42,22 @@ impl Handlers {
             text VARCHAR(512),
             url VARCHAR(512),
             is_active BOOLEAN,
+            version INTEGER DEFAULT 1,
+            created_at VARCHAR(512),
+            updated_at VARCHAR(512))")
+        .execute(&pool)
+        .await?;
+
+        sqlx::query("CREATE TABLE IF NOT EXISTS Versions (
+            hash VARCHAR(512),
+            banner_id INTEGER,
+            tag_ids INTEGER[],
+            feature_id INTEGER,
+            title VARCHAR(512),
+            text VARCHAR(512),
+            url VARCHAR(512),
+            is_active BOOLEAN,
+            version INTEGER,
             created_at VARCHAR(512),
             updated_at VARCHAR(512))")
         .execute(&pool)
@@ -202,6 +220,49 @@ impl Handlers {
 
         let pool = db.conn;
 
+        let mut result = sqlx::query("SELECT * FROM Banners
+            WHERE banner_id = $1")
+        .bind(id)
+        .fetch(&pool);
+
+        while let Some(row) = match result.try_next().await {
+            Ok(row) => {row},
+            Err(err) => {
+                println!("{}", err);
+                return ApiResponse::JsonStatus500(Json(Status500{error: "Неизвестная ошибка сервера".to_string()}));
+            }
+        } {
+
+            let banner_id: i32 = row.try_get("banner_id").expect("Query dont have banner_id");
+            let tag_ids: Vec<i32> = row.try_get("tag_ids").expect("Query dont have tag_ids");
+            let feature_id: i32 = row.try_get("feature_id").expect("Query dont have feature_id");
+            let title: String = row.try_get("title").expect("Query dont have title");
+            let text: String = row.try_get("text").expect("Query dont have text");
+            let url: String = row.try_get("url").expect("Query dont have url");
+            let is_active: bool = row.try_get("is_active").expect("Query dont have is_active");
+            let version: i32 = row.try_get("version").expect("Query dont have version");
+            let created_at: String = row.try_get("created_at").expect("Query dont have created_at");
+            let updated_at: String = row.try_get("updated_at").expect("Query dont have updated_at");
+
+            let hash = get_hash(banner_id, version).expect("Error from create hash for");
+
+            let _: (i32,) = sqlx::query_as("INSERT INTO Version
+            (hash banner_id, tag_ids, feature_id, title, text, url, is_active, version, created_at, updated_at)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING banner_id")
+            .bind(hash.as_str())
+            .bind(banner_id)
+            .bind(tag_ids)
+            .bind(feature_id)
+            .bind(title)
+            .bind(text)
+            .bind(url)
+            .bind(is_active)
+            .bind(version)
+            .bind(created_at)
+            .bind(updated_at)
+            .fetch_one(&pool).await.expect("Error from add Banner in db");
+        };
+
         let result = sqlx::query("UPDATE Banners
             SET  tag_ids = $1,
             feature_id = $2,
@@ -315,4 +376,5 @@ impl Handlers {
             return ApiResponse::JsonStatus200();
         }
     }
+
 }
